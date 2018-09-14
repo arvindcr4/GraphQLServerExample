@@ -1,21 +1,56 @@
 'use strict';
-const { graphql, buildSchema } = require('graphql');
-const schema = buildSchema(`
-type Video {
-    id: ID,
-    title: String,
-    duration: Int,
-    watched: Boolean
-}
+const express = require('express');
+const graphqlHTTP = require('express-graphql');
+const { GraphQLSchema, GraphQLObjectType, GraphQLID, GraphQLString, GraphQLBoolean, GraphQLInt } = require('graphql');
 
-type Query {
-    video: Video
-    videos: [Video]
-}
-type Schema {
-    query: Query
-}
-`);
+const PORT = process.env.PORT || 3000;
+const server = express();
+
+const videoType = new GraphQLObjectType({
+    name: 'Video',
+    description: 'A video on egghead.io',
+    fields: {
+        id: {
+            type: GraphQLID,
+            description: 'The id of the video'
+        },
+        title: {
+            type: GraphQLString,
+            description: 'The title of the video'
+        },
+        duration: {
+            type: GraphQLInt,
+            description: 'The duration of the video'
+        },
+        watched: {
+            type: GraphQLBoolean,
+            description: 'Whether or not the viewer has watched the video'
+        }
+    }
+})
+
+const queryType = new GraphQLObjectType({
+    name: 'QueryType',
+    description: 'The root query type.',
+    fields: {
+        video: {
+            type: videoType,
+            resolve: () => new Promise((resolve) => {
+                resolve({
+                    id: 'a',
+                    title: 'GraphQL',
+                    duration: 180,
+                    watched: false
+                });
+            })
+        }
+    }
+})
+
+const schema = new GraphQLSchema({
+    query: queryType,
+})
+
 
 const videoA = {
     id: 'a',
@@ -31,26 +66,9 @@ const videoB = {
 }
 const videos = [videoA, videoB];
 
-const resolvers = {
-    video: () => ({
-        id: () => '1',
-        title: () => 'bar',
-        duration: () => 180,
-        watched: () => true,
-    }),
-    videos: () => videos,
-};
 
-const query = `
-query myFirstQuery {
-    videos {
-    id,
-    title,
-    duration,
-    watched
-    }
-}
-`;
-graphql(schema, query, resolvers)
-    .then((result) => console.log(result))
-    .catch((error) => console.log(error));
+server.use('/graphql', graphqlHTTP({ schema, graphiql: true, }));
+
+server.listen(PORT, () => {
+    console.log(`Listening on http://localhost:${PORT}`);
+})
